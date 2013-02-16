@@ -4,6 +4,7 @@
 var Server = {};
 Server.move = "move"; // data : {id: somenumber, forward: true|false, rotation: radians}
 Server.fire = "fire"; // data :  {id: somenumber, rotation: radians}
+Server.info = "info"; // data : {id: , name:}
 
 // enum of actions sent to client
 var Client = {};
@@ -14,9 +15,10 @@ Client.dead = "dead"; //data: {id: somenumber}
 
 
 
-var Game = function() {
+var Game = function(playerName) {
 
   	var self = this;
+  	self.name = playerName;
  	self.players = {};
  	self.bullets = {};
  	self.id = 0;
@@ -25,11 +27,18 @@ var Game = function() {
  	self.angle = 0.0;
 
   	var socket = io.connect('http://localhost:8080');
+  	socket.on('connect',function(){
+  		$('#game').empty();
+  	});
+
+
 	socket.on(Client.start, function(data){
 		self.id = data.id;
 		self.x = data.x;
 		self.y = data.y;
 		self.players[data.id] = data;
+		// Respond with name
+		socket.emit(Server.info, {id: self.id, name: self.name})
 	});
 
   	socket.on(Client.player, function (data) {
@@ -63,7 +72,7 @@ var Game = function() {
   			});
   	}
   	self.drawHUD = function(){
-  		
+
   	}
 
   	self.drawShip = function(id, angle, x, y, color){

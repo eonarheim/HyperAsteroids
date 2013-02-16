@@ -8,6 +8,9 @@ var maxY = 800;
 // all players connected at one time!!!
 var players = {};
 
+// all bullets present at one time
+var bullets = [];
+
 
 var id = 0;
 
@@ -49,11 +52,12 @@ var clamp = function(val, min, max){
 var Server = {};
 Server.move = "move"; // data : {id: somenumber, forward: true|false, rotation: radians}
 Server.fire = "fire"; // data :  {id: somenumber, rotation: radians}
+Server.info = "info"; // data : {id: , name:}
 
 // enum of actions sent to client
 var Client = {};
 Client.start = "start"; //data: {id: somenumber, x:,somenumber y:somenumber}
-Client.player = "player"; // data: {id: somenumber, x: somenumber, y: sumnumber}
+Client.player = "player"; // data: {id: somenumber, name: name, x: somenumber, y: sumnumber}
 Client.bullet = "bullet"; // data: {id:, x: somenumber, y: somenubmer} | "{id: ,dead: true}"
 Client.dead = "dead"; //data: {id: somenumber}
 
@@ -86,13 +90,13 @@ var Pos = function(x,y){
 	return self;
 }
 
-var Bullet = function(dir, pos){
+var Bullet = function(dir, pos, ownerId){
 	var self = {};
 	self.id = newId();
 	self.pos = pos;
 	self.dir = dir;
-	self.vel = .9;
-	self.life = 20;
+	self.vel = .4;
+	self.life = 100;
 	self.update = function(timeElapsed) {
 		self.life--;
 		self.pos.add(self.dir, self.vel*timeElapsed);
@@ -115,6 +119,7 @@ var Bullet = function(dir, pos){
 var Player = function(id, socket){
 	var self = {};
 	self.id = id;
+	self.name = "";
 	self.health = 100;
 	self.socket = socket;
 	self.pos = new Pos(100,100);
@@ -122,54 +127,49 @@ var Player = function(id, socket){
 	self.dy = 0;
 	self.dx = 0;
 	self.rotation = 0; // in radians
-	self.bullets = [];
+	//self.bullets = [];
 	self.deadBullets = [];
 	self.canFire = true;
 	self.lastFire;
 	self.sinceLastFire;
+	self.canMove = true;
+	self.lastMove;
+	self.sinceLastMove;
 	self.fireBullet = function(){
 		if(self.canFire){
-			var newBullet = new Bullet(new Dir(self.dir.dx, self.dir.dy), new Pos(self.pos.x, self.pos.y));
+			var newBullet = new Bullet(new Dir(self.dir.dx, self.dir.dy), new Pos(self.pos.x, self.pos.y), self.id);
 			//console.log("Creating new bullet: " + newBullet.id);
-			self.bullets.push(newBullet);
+			bullets.push(newBullet);
 			self.lastFire = new Date().getTime();
 			self.sinceLastFire = self.lastFire;
 			self.canFire = false;
 		}else{
-			console.log("Cant fire yet");
+			//console.log("Cant fire yet");
 		}
 	}
 
 	self.move = function() {
-		// Appy impulse
-		self.dx += self.dir.dx/10;
-		self.dy += self.dir.dy/10;
+
+		if(self.canMove){
+			// Appy impulse
+			self.dx += self.dir.dx/40;
+			self.dy += self.dir.dy/40;
+			self.lastMove = new Date().getTime();
+			self.sinceLastMove = self.lastMove;
+			self.canMove = false;
+		}else{
+			//console.log("Can't move yet");
+		}
 
 	}
 
 	self.update = function(timeElapsed) {
-		// get dead bullets
-		self.deadBullets = self.bullets.filter(function(bullet){
-			return bullet.life <= 0;
-		});
 
-
-		// cull dead bullets
-		self.bullets = self.bullets.filter(function(bullet){
-			return bullet.life > 0;
-		});
-
-		// update live bullets
-		for(var b in self.bullets){
-			
-			self.bullets[b].update(timeElapsed);			
-		}
-
-		self.dx = clamp(self.dx,-1,1);
-		self.dy = clamp(self.dy,-1,1);
-
-		self.pos.x += self.dx*timeElapsed;
-		self.pos.y += self.dy*timeElapsed;
+		self.dx = clamp(self.dx,-.5,.5);
+		self.dy = clamp(self.dy,-.5,.5);
+		//console.log("New Vel: " + (self.dx*timeElapsed).toFixed(1) + ", " + (self.dy*timeElapsed).toFixed(1));
+		self.pos.x += clamp(self.dx*timeElapsed, -15, 15);
+		self.pos.y += clamp(self.dy*timeElapsed, -15, 15);
 
 
 		self.pos.x %= maxX;
@@ -182,10 +182,19 @@ var Player = function(id, socket){
 		if(self.pos.y<0){
 			self.pos.y = maxY;
 		}
+
+		// Throttle moves and fires
+		self.sinceLastMove += timeElapsed;
 		self.sinceLastFire += timeElapsed;
-		// Fire only every 600ms
-		if(self.sinceLastFire - self.lastFire > 600){
+
+		// Fire only every 300ms
+		if(self.sinceLastFire - self.lastFire > 300){
 			self.canFire = true;
+		}
+
+		// Move only every 70ms
+		if(self.sinceLastMove - self.lastMove > 100){
+			self.canMove = true;
 		}
 		
 		
@@ -205,6 +214,8 @@ io.sockets.on('connection', function (socket) {
   var newplayerId = newId();
   var newplayer = new Player(newplayerId, socket);
   players[newplayerId] = newplayer;
+
+  // Setup new player
   console.log("[INFO]: New player connected - id: " + newplayerId );
   socket.emit(Client.start, 
   		{
@@ -212,6 +223,11 @@ io.sockets.on('connection', function (socket) {
   			x: newplayer.pos.x,
   			y: newplayer.pos.y
   		});
+  socket.on(Server.info, function(data){
+  		players[data.id].name = data.name;
+  		console.log("[INFO]: Player has chosen the name: " + data.name);
+  });
+
 
   // register update
   socket.on(Server.move, function(data){
@@ -221,6 +237,7 @@ io.sockets.on('connection', function (socket) {
 		  		player.dir.rotateBy(data.rotation);
 	  		}
 	  		if(data.forward){
+	  			//console.log("Player " + player.id + " has issued a move command");
 	  			player.move();
 	  		}
   		}
@@ -259,23 +276,29 @@ io.sockets.on('connection', function (socket) {
 		// Get the time to calculate time-elapsed
 		var now = new Date().getTime();
 		var elapsed = now - lastTime;
+		//console.log("Elapsed time: " + elapsed);
 
+		// Update Players
 		for(var id in players){
 			players[id].update(elapsed);
-			
 		}
-		var allBullets = [];
-		var deadBullets = [];
+
+		// Update Bulllets
+		for(var id in bullets){
+			var b = bullets[id];
+			b.update(elapsed);
+		}
+		
+		// Broadcast all player positions
 		for(var id in players){
 			var p = players[id];
 
-			allBullets = allBullets.concat(p.bullets);
-			deadBullets = deadBullets.concat(p.deadBullets);
 			for(var j in players){
 				var tmp = players[j];
 				p.socket.emit(Client.player, 
 				{
 					id: tmp.id,
+					name: tmp.name,
 					x: tmp.pos.x,
 					y: tmp.pos.y,
 					angle: tmp.dir.angle
@@ -283,33 +306,33 @@ io.sockets.on('connection', function (socket) {
 			}
 		}
 
-		
+		// Broadcast all bullet positions
 		for(var id in players){
 			var p = players[id];
-			for(var b in allBullets){
-				var tmp = allBullets[b];
-				p.socket.emit(Client.bullet, 
-				{
-					id: tmp.id,
-					x: tmp.pos.x,
-					y: tmp.pos.y
-				});
-			}
-			for(var b in deadBullets){
-				var tmp = deadBullets[b];
-				//console.log("Emitting dead bullet: " + tmp.id);
-				p.socket.emit(Client.bullet, 
-				{
-					id: tmp.id,
-					dead: true
-				});
+			for(var bid in bullets){
+				var b = bullets[bid];
+				if(b.life > 0){
+					p.socket.emit(Client.bullet, 
+					{
+						id: b.id,
+						x: b.pos.x,
+						y: b.pos.y
+					});
+				}else{
+					p.socket.emit(Client.bullet, 
+					{
+						id: b.id,
+						dead: true
+					});
+				}
+
 			}
 		}
 
 		// update time of last loop ending
 		lastTime = now;
 
-	}, 40);
+	}, 20);
 
 
 });
