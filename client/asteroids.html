@@ -1,0 +1,69 @@
+<DOCTYPE html>
+<html>
+<head>
+	
+</head>
+<body>
+
+<svg id="game">
+</svg>
+
+<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+	<script src="../lib/socket.io.js"></script>
+	<script src="asteroids.js"></script>
+<script>
+	// Start the game
+	$(function(){
+		var game = new Game();
+
+		var keys = [];
+		// Capture key events
+		window.onkeydown = function(ev){
+			if(keys.indexOf(ev.keyCode)<0){
+				keys.push(ev.keyCode);
+			}
+		};
+		window.onkeyup = function(ev){
+			var key = keys.indexOf(ev.keyCode);
+			keys.splice(key,1);
+		};
+
+		// Mainloop
+		window.setInterval(function(){
+
+			var forward = false;
+			var angle  = 0.0;
+			var fire = false;
+			//uparrow
+			if(keys.indexOf(38)>-1){
+				forward = true;
+			}
+			//leftarrow
+			if(keys.indexOf(37)>-1){
+				angle = -0.1;
+			}
+
+			//rightarrow
+			if(keys.indexOf(39)>-1){
+				angle = 0.1;
+			}
+
+			//spacebar
+			if(keys.indexOf(32)>-1){
+				fire = true;
+			}
+			if(angle !== 0.0 || forward){
+				game.move(forward, angle);
+			}
+			if(fire){
+				game.fire(angle);
+			}
+
+			game.draw();
+
+		}, 30);
+
+	})
+</script>
+</body>
+</html>

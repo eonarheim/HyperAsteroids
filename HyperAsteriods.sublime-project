@@ -1,0 +1,42 @@
+{
+	"folders":
+	[
+		{
+			"path": "."
+			
+		}
+	],
+	"settings":
+	{
+		"tab_size":3
+	},
+	"build_systems":
+	[
+		{
+			"name": "Build",
+			"cmd": ["build"],
+			"working_dir":"$project_path",
+
+			"windows":{
+				"cmd":["build.bat"]
+			},
+			"linux":{
+				"cmd":["make"]
+			}
+		},
+		{
+			"name": "Clean",
+			"cmd": ["clean"],
+			"working_dir":"$project_path",
+
+			"windows":{
+				"cmd":["clean.bat"]
+			},
+			"linux":{
+				"cmd":["make clean"]
+			}
+		}
+
+
+	]
+}
