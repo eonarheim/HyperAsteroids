@@ -54,7 +54,7 @@ Server.fire = "fire"; // data :  {id: somenumber, rotation: radians}
 var Client = {};
 Client.start = "start"; //data: {id: somenumber, x:,somenumber y:somenumber}
 Client.player = "player"; // data: {id: somenumber, x: somenumber, y: sumnumber}
-Client.bullet = "bullet"; // data: {x: somenumber, y: somenubmer}
+Client.bullet = "bullet"; // data: {id:, x: somenumber, y: somenubmer} | "{id: ,dead: true}"
 Client.dead = "dead"; //data: {id: somenumber}
 
 
@@ -91,11 +91,11 @@ var Bullet = function(dir, pos){
 	self.id = newId();
 	self.pos = pos;
 	self.dir = dir;
-	self.vel = 20;
+	self.vel = .9;
 	self.life = 20;
-	self.update = function() {
+	self.update = function(timeElapsed) {
 		self.life--;
-		self.pos.add(self.dir, self.vel);
+		self.pos.add(self.dir, self.vel*timeElapsed);
 
 		self.pos.x %= maxX;
 		self.pos.y %= maxY;
@@ -123,21 +123,37 @@ var Player = function(id, socket){
 	self.dx = 0;
 	self.rotation = 0; // in radians
 	self.bullets = [];
+	self.deadBullets = [];
+	self.canFire = true;
+	self.lastFire;
+	self.sinceLastFire;
 	self.fireBullet = function(){
-		self.bullets.push(new Bullet(self.dir, new Pos(self.pos.x, self.pos.y)));
+		if(self.canFire){
+			var newBullet = new Bullet(new Dir(self.dir.dx, self.dir.dy), new Pos(self.pos.x, self.pos.y));
+			//console.log("Creating new bullet: " + newBullet.id);
+			self.bullets.push(newBullet);
+			self.lastFire = new Date().getTime();
+			self.sinceLastFire = self.lastFire;
+			self.canFire = false;
+		}else{
+			console.log("Cant fire yet");
+		}
 	}
 
 	self.move = function() {
-		// Update self position
-		self.dx = clamp(self.dir.dx + self.dx,-6,6);
-		self.dy = clamp(self.dir.dy + self.dy,-6,6);
+		// Appy impulse
+		self.dx += self.dir.dx/10;
+		self.dy += self.dir.dy/10;
 
-		
-
-		//self.pos.add(self.dir, self.vel++);
 	}
 
-	self.update = function() {
+	self.update = function(timeElapsed) {
+		// get dead bullets
+		self.deadBullets = self.bullets.filter(function(bullet){
+			return bullet.life <= 0;
+		});
+
+
 		// cull dead bullets
 		self.bullets = self.bullets.filter(function(bullet){
 			return bullet.life > 0;
@@ -146,11 +162,14 @@ var Player = function(id, socket){
 		// update live bullets
 		for(var b in self.bullets){
 			
-			self.bullets[b].update();			
+			self.bullets[b].update(timeElapsed);			
 		}
 
-		self.pos.x += self.dx;
-		self.pos.y += self.dy;
+		self.dx = clamp(self.dx,-1,1);
+		self.dy = clamp(self.dy,-1,1);
+
+		self.pos.x += self.dx*timeElapsed;
+		self.pos.y += self.dy*timeElapsed;
 
 
 		self.pos.x %= maxX;
@@ -163,6 +182,12 @@ var Player = function(id, socket){
 		if(self.pos.y<0){
 			self.pos.y = maxY;
 		}
+		self.sinceLastFire += timeElapsed;
+		// Fire only every 600ms
+		if(self.sinceLastFire - self.lastFire > 600){
+			self.canFire = true;
+		}
+		
 		
 	}
 
@@ -217,32 +242,35 @@ io.sockets.on('connection', function (socket) {
   		for(var id in players){
   			var player =  players[id];
   			if(player.socket === socket){
-  				players[id] = 'disconnected';
+  				delete players[id];
   				break;
   			}
 
   		}
+      console.log("[INFO]: Client disconnected! Players left: " + players.length);
 
-      console.log("[INFO]: Client disconnected!");
   });
 
+  
   // Mainloop code executes every 30 ms and emits postion information to players
+
+	var lastTime = new Date().getTime();
 	setInterval(function(){
+		// Get the time to calculate time-elapsed
+		var now = new Date().getTime();
+		var elapsed = now - lastTime;
+
 		for(var id in players){
-			if(players[id] === 'disconnected'){
-				continue;
-			}
-			players[id].update();
+			players[id].update(elapsed);
 			
 		}
 		var allBullets = [];
+		var deadBullets = [];
 		for(var id in players){
-			if(players[id] === 'disconnected'){
-				continue;
-			}
 			var p = players[id];
 
-			allBullets = p.bullets;
+			allBullets = allBullets.concat(p.bullets);
+			deadBullets = deadBullets.concat(p.deadBullets);
 			for(var j in players){
 				var tmp = players[j];
 				p.socket.emit(Client.player, 
@@ -257,9 +285,6 @@ io.sockets.on('connection', function (socket) {
 
 		
 		for(var id in players){
-			if(players[id] === 'disconnected'){
-				continue;
-			}
 			var p = players[id];
 			for(var b in allBullets){
 				var tmp = allBullets[b];
@@ -270,10 +295,21 @@ io.sockets.on('connection', function (socket) {
 					y: tmp.pos.y
 				});
 			}
+			for(var b in deadBullets){
+				var tmp = deadBullets[b];
+				//console.log("Emitting dead bullet: " + tmp.id);
+				p.socket.emit(Client.bullet, 
+				{
+					id: tmp.id,
+					dead: true
+				});
+			}
 		}
 
+		// update time of last loop ending
+		lastTime = now;
 
-	}, 20);
+	}, 40);
 
 
 });

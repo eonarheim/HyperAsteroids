@@ -18,7 +18,7 @@ var Game = function() {
 
   	var self = this;
  	self.players = {};
- 	self.bullets = [];
+ 	self.bullets = {};
  	self.id = 0;
  	self.x = 0;
  	self.y = 0;
@@ -40,7 +40,9 @@ var Game = function() {
 	});
 
 	socket.on(Client.bullet, function (data){
-		self.bullets.push(data);
+		
+		self.bullets[data.id] = data;
+		
 	});
 
 
@@ -60,6 +62,35 @@ var Game = function() {
   				rotation: angle 
   			});
   	}
+  	self.drawHUD = function(){
+  		
+  	}
+
+  	self.drawShip = function(id, angle, x, y, color){
+  		var triangle = 
+  		"<svg>"+
+			"<polygon id='player"+id+"' transform='rotate("+angle*180.0/Math.PI+" "+x+" "+y+") translate("+x+" "+y+")' points='0 10 0 -10 40 0' style='stroke:"+color+";stroke-width:3px' />"+
+  		"</svg>"
+  		return triangle;
+  	}
+
+  	self.updateShip = function(id, angle, x, y){
+  		$('#player'+id).attr('transform', "rotate("+angle*180.0/Math.PI+" "+x+" "+y+") translate("+x+" "+y+")");
+  	}
+
+  	self.updateHealthBar = function(id, x, y, health){
+
+  		$('#health'+id).attr("x", x-10);
+  		$('#health'+id).attr("y", y-20);
+  		$('#health'+id).attr("width", health);
+  	}
+
+  	self.drawHealthBar = function(id, x, y, health){
+  		var healthBar = "<svg><rect id='health"+id+"' width="+50+" height="+2+" x="+(x-10)+" y="+(y-20)+" style='fill:lime;stroke-width: 1;stroke:lime;'></rect></svg>";
+  		return healthBar;
+  	}
+
+  	
 
   	self.draw = function(){
   		// Draw updates 
@@ -67,24 +98,52 @@ var Game = function() {
   			var p = self.players[id];
   			var domEl = $('#player'+id);
 
+  			if(id == self.id){
+  				color = "lime";
+  			}else{
+  				color = "rgb("+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+")";
+  			}
+
+
   			if (document.getElementById('player'+p.id)) {
   				domEl.attr('transform', "rotate("+p.angle*180.0/Math.PI+" "+p.x+" "+p.y+") translate("+p.x+" "+p.y+")");
+  				self.updateShip(p.id, p.angle, p.x, p.y);
+  				self.updateHealthBar(p.id, p.x, p.y, 50);
   			}else{
-  				var triangle = "<svg><polygon id='player"+p.id+"' transform='rotate("+p.angle*180.0/Math.PI+" "+p.x+" "+p.y+") translate("+p.x+" "+p.y+")' points='0 10 0 -10 40 0' style='stroke:lime;stroke-width:3px' /></svg>"
-				$("#game").append(triangle);		
+  				/*
+  				var healthBar = "<svg><rect  width="+50+" height="+2+" x="+(p.x-10)+" y="+(p.y-20)+" style='fill:lime;stroke-width: 1;stroke:lime;'></rect></svg>";
+
+  				var triangle = "<svg>"+
+
+  									"<polygon id='player"+p.id+"' transform='rotate("+p.angle*180.0/Math.PI+" "+p.x+" "+p.y+") translate("+p.x+" "+p.y+")' points='0 10 0 -10 40 0' style='stroke:"+color+";stroke-width:3px' />"+
+  									"</svg>"
+
+  									*/
+  				var healthBar = self.drawHealthBar(p.id, p.x, p.y, 50);
+  				var ship = self.drawShip(p.id, p.angle, p.x, p.y, color);
+
+				$("#game").append(ship);		
+  				$("#game").append(healthBar);
   			}
   		}
 
-  		$.each(self.bullets, function(i, b){
+  		
+  		for(var id in self.bullets){
+  			var b = self.bullets[id];
+  			if(b.dead){
+				delete self.bullets[b.id];
+  				$('#bulletcontainer'+b.id).remove();
+  			}
+
   			var domEl = $('#bullet'+b.id);
   			if (document.getElementById('bullet'+b.id)) {
   				domEl.attr("cx", b.x);
   				domEl.attr("cy", b.y);
   			}else{
-	  			var bullet = "<svg><circle id='bullet"+b.id+"' cx='"+b.x+"' cy='"+b.y+"' r='3' stroke='lime' stroke-width='2' /></svg>"
+	  			var bullet = "<svg id='bulletcontainer"+b.id+"'><circle id='bullet"+b.id+"' cx='"+b.x+"' cy='"+b.y+"' r='3' stroke='lime' stroke-width='2' /></svg>"
 	  			$("#game").append(bullet);
   			}
-  		});
+  		};
 			
   	};
 
