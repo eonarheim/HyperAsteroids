@@ -13,10 +13,12 @@ Client.bullet = "bullet"; // data: {x: somenumber, y: somenubmer}
 Client.dead = "dead"; //data: {id: somenumber}
 
 
+
 var Game = function() {
 
   	var self = this;
  	self.players = {};
+ 	self.bullets = [];
  	self.id = 0;
  	self.x = 0;
  	self.y = 0;
@@ -31,11 +33,14 @@ var Game = function() {
 	});
 
   	socket.on(Client.player, function (data) {
-  		console.log(data);
   		if(data.id == self.id){
   			self.angle = data.angle;
   		}
   		self.players[data.id] = data;
+	});
+
+	socket.on(Client.bullet, function (data){
+		self.bullets.push(data);
 	});
 
 
@@ -65,13 +70,21 @@ var Game = function() {
   			if (document.getElementById('player'+p.id)) {
   				domEl.attr('transform', "rotate("+p.angle*180.0/Math.PI+" "+p.x+" "+p.y+") translate("+p.x+" "+p.y+")");
   			}else{
-  				var triangle = "<svg><polygon id='player"+p.id+"' transform='rotate("+p.angle*180.0/Math.PI+" "+p.x+" "+p.y+") translate("+p.x+" "+p.y+")' points='0 10 0 -10 20 0' style='stroke:lime;stroke-width:3px' /></svg>"
-  				//rotate("+p.angle*180.0/Math.PI+" "+p.x+" "+p.y+")
-  				var test = "<polygon id='player"+p.id+"' transform='rotate(45 100 100) translate(100 100)' points='0 10 0 -10 20 0' style='stroke:lime;stroke-width:3px' />"
+  				var triangle = "<svg><polygon id='player"+p.id+"' transform='rotate("+p.angle*180.0/Math.PI+" "+p.x+" "+p.y+") translate("+p.x+" "+p.y+")' points='0 10 0 -10 40 0' style='stroke:lime;stroke-width:3px' /></svg>"
 				$("#game").append(triangle);		
   			}
-
   		}
+
+  		$.each(self.bullets, function(i, b){
+  			var domEl = $('#bullet'+b.id);
+  			if (document.getElementById('bullet'+b.id)) {
+  				domEl.attr("cx", b.x);
+  				domEl.attr("cy", b.y);
+  			}else{
+	  			var bullet = "<svg><circle id='bullet"+b.id+"' cx='"+b.x+"' cy='"+b.y+"' r='3' stroke='lime' stroke-width='2' /></svg>"
+	  			$("#game").append(bullet);
+  			}
+  		});
 			
   	};
 

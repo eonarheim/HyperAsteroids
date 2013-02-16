@@ -2,11 +2,12 @@
 // server globals
 
 // game size
-var maxX = 800;
+var maxX = 1000;
 var maxY = 800;
 
 // all players connected at one time!!!
 var players = {};
+
 
 var id = 0;
 
@@ -33,6 +34,16 @@ var randomPos = function(maxX, maxY){
 	return new Pos(Math.random() * maxX, Math.random() * maxY);
 }
 
+
+var clamp = function(val, min, max){
+	if(val<min){
+		return min;
+	}else if(val>max){
+		return max;
+	}else{
+		return val;
+	}
+}
 
 // enum of possible actions the server can recieve from the client
 var Server = {};
@@ -77,14 +88,28 @@ var Pos = function(x,y){
 
 var Bullet = function(dir, pos){
 	var self = {};
+	self.id = newId();
 	self.pos = pos;
 	self.dir = dir;
 	self.vel = 20;
-	var life = 300;
+	self.life = 20;
 	self.update = function() {
-		life--;
+		self.life--;
 		self.pos.add(self.dir, self.vel);
+
+		self.pos.x %= maxX;
+		self.pos.y %= maxY;
+
+		if(self.pos.x<0){
+			self.pos.x = maxX;
+		}
+
+		if(self.pos.y<0){
+			self.pos.y = maxY;
+		}
+
 	}
+	return self;
 }
 
 var Player = function(id, socket){
@@ -94,16 +119,22 @@ var Player = function(id, socket){
 	self.socket = socket;
 	self.pos = new Pos(100,100);
 	self.dir = new Dir(1.0,0.0);
-	self.vel = 10;
+	self.dy = 0;
+	self.dx = 0;
 	self.rotation = 0; // in radians
 	self.bullets = [];
 	self.fireBullet = function(){
-		self.bullets.push(new Bullet(self.dir, self.pos));
+		self.bullets.push(new Bullet(self.dir, new Pos(self.pos.x, self.pos.y)));
 	}
 
 	self.move = function() {
 		// Update self position
-		self.pos.add(self.dir, self.vel);
+		self.dx = clamp(self.dir.dx + self.dx,-6,6);
+		self.dy = clamp(self.dir.dy + self.dy,-6,6);
+
+		
+
+		//self.pos.add(self.dir, self.vel++);
 	}
 
 	self.update = function() {
@@ -113,10 +144,25 @@ var Player = function(id, socket){
 		});
 
 		// update live bullets
-		for(var i = 0; i< self.bullets.length; i++){
-			self.bullets[i].update();			
+		for(var b in self.bullets){
+			
+			self.bullets[b].update();			
 		}
 
+		self.pos.x += self.dx;
+		self.pos.y += self.dy;
+
+
+		self.pos.x %= maxX;
+		self.pos.y %= maxY;
+
+		if(self.pos.x<0){
+			self.pos.x = maxX;
+		}
+
+		if(self.pos.y<0){
+			self.pos.y = maxY;
+		}
 		
 	}
 
@@ -128,7 +174,7 @@ var Player = function(id, socket){
 
 
 // asteroids server 
-var io = require('socket.io').listen(8080);
+var io = require('socket.io').listen(8080, {log: false});
 
 io.sockets.on('connection', function (socket) {
   var newplayerId = newId();
@@ -189,12 +235,14 @@ io.sockets.on('connection', function (socket) {
 			players[id].update();
 			
 		}
-
+		var allBullets = [];
 		for(var id in players){
 			if(players[id] === 'disconnected'){
 				continue;
 			}
 			var p = players[id];
+
+			allBullets = p.bullets;
 			for(var j in players){
 				var tmp = players[j];
 				p.socket.emit(Client.player, 
@@ -203,7 +251,23 @@ io.sockets.on('connection', function (socket) {
 					x: tmp.pos.x,
 					y: tmp.pos.y,
 					angle: tmp.dir.angle
+				});
+			}
+		}
 
+		
+		for(var id in players){
+			if(players[id] === 'disconnected'){
+				continue;
+			}
+			var p = players[id];
+			for(var b in allBullets){
+				var tmp = allBullets[b];
+				p.socket.emit(Client.bullet, 
+				{
+					id: tmp.id,
+					x: tmp.pos.x,
+					y: tmp.pos.y
 				});
 			}
 		}
