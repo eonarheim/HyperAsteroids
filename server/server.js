@@ -7,6 +7,7 @@ var maxY = 800;
 
 // all players connected at one time!!!
 var players = {};
+var playersArray = [];
 
 // all bullets present at one time
 var bullets = [];
@@ -108,7 +109,7 @@ var Bullet = function(dir, pos, ownerId){
 		if(self.life <= 0){
 			self.dead = true;
 		}
-		self.pos.add(self.dir, self.vel*timeElapsed);
+		self.pos.add(self.dir, self.vel*timeElapsed/playersArray.length);
 
 		self.pos.x %= maxX;
 		self.pos.y %= maxY;
@@ -136,7 +137,6 @@ var Player = function(id, socket){
 	self.dy = 0;
 	self.dx = 0;
 	self.rotation = 0; // in radians
-	//self.bullets = [];
 	self.deadBullets = [];
 	self.canFire = true;
 	self.lastFire;
@@ -146,7 +146,7 @@ var Player = function(id, socket){
 	self.sinceLastMove;
 	self.fireBullet = function(){
 		if(self.canFire){
-			console.log("Firing bullet with ownder id " + self.id);
+			//console.log("Firing bullet with ownder id " + self.id);
 			var newBullet = new Bullet(new Dir(self.dir.dx, self.dir.dy), new Pos(self.pos.x, self.pos.y), self.id);
 			//console.log("Creating new bullet: " + newBullet.id);
 			bullets.push(newBullet);
@@ -168,19 +168,21 @@ var Player = function(id, socket){
 			self.sinceLastMove = self.lastMove;
 			self.canMove = false;
 		}else{
-			console.log("Can't move yet");
+			//console.log("Can't move yet");
 
 		}
 
 	}
 
 	self.update = function(timeElapsed) {
-
+		if(timeElapsed < 15){
+			return;
+		}
 		self.dx = clamp(self.dx,-.5,.5);
 		self.dy = clamp(self.dy,-.5,.5);
 		//console.log("New Vel: " + (self.dx*timeElapsed).toFixed(1) + ", " + (self.dy*timeElapsed).toFixed(1));
-		self.pos.x += clamp(self.dx*timeElapsed, -10, 10);
-		self.pos.y += clamp(self.dy*timeElapsed, -10, 10);
+		self.pos.x += clamp(self.dx*timeElapsed/playersArray.length, -10, 10);
+		self.pos.y += clamp(self.dy*timeElapsed/playersArray.length, -10, 10);
 
 
 		self.pos.x %= maxX;
@@ -241,6 +243,7 @@ io.sockets.on('connection', function (socket) {
   var newplayerId = newId();
   var newplayer = new Player(newplayerId, socket);
   players[newplayerId] = newplayer;
+  playersArray.push(newplayer);
 
   // Setup new player
   console.log("[INFO]: New player connected - id: " + newplayerId );
@@ -316,60 +319,52 @@ io.sockets.on('connection', function (socket) {
 			var b = bullets[id];
 			b.update(elapsed);
 		}
+		playersArray = playersArray.filter(function(player){
+			return player.health > -1;
+		});
+		var dlPackage = playersArray.map(function(player){
+				return {
+					id: player.id,
+					name: player.name,
+					health: player.health,
+					x: player.pos.x,
+					y: player.pos.y,
+					angle: player.dir.angle
+				};
+			});
 		
+		var dlBullets = bullets.map(function(bullet){
+			return {
+				id: bullet.id,
+				dead: bullet.dead,
+				x: bullet.pos.x,
+				y: bullet.pos.y
+			};
+		});
 		// Broadcast all player positions
 		for(var id in players){
 			var p = players[id];
-
-			for(var j in players){
-				var tmp = players[j];
-				if(tmp.health< 0){continue;}
-				p.socket.emit(Client.player, 
-				{
-					id: tmp.id,
-					name: tmp.name,
-					health: tmp.health,
-					x: tmp.pos.x,
-					y: tmp.pos.y,
-					angle: tmp.dir.angle
-				});
-			}
+			p.socket.emit(Client.player, dlPackage);
 		}
 
 		// Broadcast all bullet positions
 		for(var id in players){
 			var p = players[id];
-			for(var bid in bullets){
-				var b = bullets[bid];
-				if(b.life > 0){
-					p.socket.emit(Client.bullet, 
-					{
-						id: b.id,
-						x: b.pos.x,
-						y: b.pos.y
-					});
-				}else{
-
-					p.socket.emit(Client.bullet, 
-					{
-						id: b.id,
-						dead: true
-					});
-				}
-			}
+			p.socket.emit(Client.bullet, dlBullets);
 		}
 
 		// Remove dead bullets
 		for (var id in bullets){
 			var b = bullets[id];
 			if(b.dead){
-				delete bullets[id];
+				bullets.splice(id,1);
 			}
 		}
 		// Remove dead players
-		for( var id in players){
-			var p = players[id];
+		for( var id in playersArray){
+			var p = playersArray[id];
 			if(p.health < 0){
+				playersArray.splice(id, 1);
 				delete players[id];
 			}
 		}
@@ -377,7 +372,7 @@ io.sockets.on('connection', function (socket) {
 		// update time of last loop ending
 		lastTime = now;
 
-	}, 20);
+	}, 35);
 
 
 });

@@ -20,13 +20,14 @@ var Game = function(playerName) {
   	var self = this;
   	self.name = playerName;
  	self.players = {};
+ 	self.playersArray = [];
  	self.bullets = {};
  	self.id = 0;
  	self.x = 0;
  	self.y = 0;
  	self.angle = 0.0;
  	self.dead = false;
-  	var socket = io.connect('http://localhost:8080', {
+  	var socket = io.connect('http://192.168.1.197:8080', {
     	reconnect: false
 	});
   	socket.on('connect',function(){
@@ -44,23 +45,24 @@ var Game = function(playerName) {
 	});
 
   	socket.on(Client.player, function (data) {
-  		if(data.id == self.id){
-  			if(data.health <= 0){
-  				$('#loseModal').show();
-  				self.dead = true;
-  				socket.disconnect();
+  		$.each(data, function(i, player){
+  			if(player.id == self.id){
+  				if(player.health <= 0){
+	  				$('#loseModal').show();
+	  				self.dead = true;
+	  				socket.disconnect();
+  				}
   			}
-  			self.angle = data.angle;
-  		}
+  			self.players[player.id] = player;
 
-
-  		self.players[data.id] = data;
+  		});
+  		playersArray = data;
 	});
 
 	socket.on(Client.bullet, function (data){
-		
-		self.bullets[data.id] = data;
-		
+		$.each(data, function(i, bullet){
+			self.bullets[bullet.id] = bullet;
+		});
 	});
 
 
@@ -88,7 +90,7 @@ var Game = function(playerName) {
 
   	self.drawShip = function(id, angle, x, y, color){
   		var triangle = 
-  		"<svg>"+
+  		"<svg class='container"+id+"'>"+
 			"<polygon id='player"+id+"' transform='rotate("+angle*180.0/Math.PI+" "+x+" "+y+") translate("+x+" "+y+")' points='0 10 0 -10 40 0' style='stroke:"+color+";stroke-width:3px' />"+
   		"</svg>"
   		return triangle;
@@ -106,12 +108,12 @@ var Game = function(playerName) {
   	}
 
   	self.drawHealthBar = function(id, x, y, health){
-  		var healthBar = "<svg><rect id='health"+id+"' width="+50+" height="+2+" x="+(x-10)+" y="+(y-20)+" style='fill:lime;stroke-width: 1;stroke:lime;'></rect></svg>";
+  		var healthBar = "<svg class='container"+id+"'><rect id='health"+id+"' width="+50+" height="+2+" x="+(x-10)+" y="+(y-20)+" style='fill:lime;stroke-width: 1;stroke:lime;'></rect></svg>";
   		return healthBar;
   	}
 
   	self.drawNameTag = function(id, name, x, y){
-  		var nameTag = "<svg><text id='nametag"+id+"' transform='translate("+(x-10)+" "+(y-25)+")' fill='lime' style='font-family:Consolas' >"+name+"</text></svg>"
+  		var nameTag = "<svg class='container"+id+"'><text id='nametag"+id+"' transform='translate("+(x-10)+" "+(y-25)+")' fill='lime' style='font-family:Consolas' >"+name+"</text></svg>"
   		return nameTag;
   	}
   	self.updateNameTag = function(id,name, x, y){
@@ -126,10 +128,8 @@ var Game = function(playerName) {
   		for(var id in self.players){
   			var p = self.players[id];
   			var domEl = $('#player'+id);
-  			if(p.health < 0){
-  				$('#nametag').remove();
-  				$('#health').remove();
-  				$('#player').remove();
+  			if(p.health <= 0){
+  				$('.container'+id).remove();
   				delete self.players[id];
   				continue;
   			}
@@ -161,11 +161,8 @@ var Game = function(playerName) {
   			}
   		}
 
-  		
-  		for(var id in self.bullets){
-  			var b = self.bullets[id];
+  		$.each(self.bullets, function(i, b){
   			if(b.dead){
-				delete self.bullets[b.id];
   				$('#bulletcontainer'+b.id).remove();
   			}else{
 	  			var domEl = $('#bullet'+b.id);
@@ -177,8 +174,7 @@ var Game = function(playerName) {
 		  			$("#game").append(bullet);
 	  			}
   			}
-  		};
-			
+  		});
   	};
 
 
