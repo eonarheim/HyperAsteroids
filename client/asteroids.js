@@ -25,8 +25,10 @@ var Game = function(playerName) {
  	self.x = 0;
  	self.y = 0;
  	self.angle = 0.0;
-
-  	var socket = io.connect('http://localhost:8080');
+ 	self.dead = false;
+  	var socket = io.connect('http://localhost:8080', {
+    	reconnect: false
+	});
   	socket.on('connect',function(){
   		$('#game').empty();
   	});
@@ -43,8 +45,15 @@ var Game = function(playerName) {
 
   	socket.on(Client.player, function (data) {
   		if(data.id == self.id){
+  			if(data.health <= 0){
+  				$('#loseModal').show();
+  				self.dead = true;
+  				socket.disconnect();
+  			}
   			self.angle = data.angle;
   		}
+
+
   		self.players[data.id] = data;
 	});
 
@@ -56,6 +65,7 @@ var Game = function(playerName) {
 
 
   	self.move = function(move, angle){
+  		if(self.dead) return;
   		socket.emit(Server.move, 
   			{
   				id: self.id,
@@ -65,6 +75,7 @@ var Game = function(playerName) {
   	}
 
   	self.fire = function(angle) {
+  		if(self.dead) return;
   		socket.emit(Server.fire, 
   			{
 				id: self.id,
@@ -99,6 +110,15 @@ var Game = function(playerName) {
   		return healthBar;
   	}
 
+  	self.drawNameTag = function(id, name, x, y){
+  		var nameTag = "<svg><text id='nametag"+id+"' transform='translate("+(x-10)+" "+(y-25)+")' fill='lime' style='font-family:Consolas' >"+name+"</text></svg>"
+  		return nameTag;
+  	}
+  	self.updateNameTag = function(id,name, x, y){
+  		$('#nametag'+id).attr('transform', "translate("+(x-10)+" "+(y-25)+")");
+  		$('#nametag'+id).innerHtml = name;
+  	}
+
   	
 
   	self.draw = function(){
@@ -106,33 +126,38 @@ var Game = function(playerName) {
   		for(var id in self.players){
   			var p = self.players[id];
   			var domEl = $('#player'+id);
-
+  			if(p.health < 0){
+  				$('#nametag').remove();
+  				$('#health').remove();
+  				$('#player').remove();
+  				delete self.players[id];
+  				continue;
+  			}
+  			
   			if(id == self.id){
   				color = "lime";
+  				p.name = self.name;
   			}else{
   				color = "rgb("+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+")";
   			}
 
-
   			if (document.getElementById('player'+p.id)) {
   				domEl.attr('transform', "rotate("+p.angle*180.0/Math.PI+" "+p.x+" "+p.y+") translate("+p.x+" "+p.y+")");
   				self.updateShip(p.id, p.angle, p.x, p.y);
-  				self.updateHealthBar(p.id, p.x, p.y, 50);
+  				self.updateHealthBar(p.id, p.x, p.y, p.health);
+
+  				self.updateNameTag(p.id, p.name, p.x, p.y);
   			}else{
-  				/*
-  				var healthBar = "<svg><rect  width="+50+" height="+2+" x="+(p.x-10)+" y="+(p.y-20)+" style='fill:lime;stroke-width: 1;stroke:lime;'></rect></svg>";
-
-  				var triangle = "<svg>"+
-
-  									"<polygon id='player"+p.id+"' transform='rotate("+p.angle*180.0/Math.PI+" "+p.x+" "+p.y+") translate("+p.x+" "+p.y+")' points='0 10 0 -10 40 0' style='stroke:"+color+";stroke-width:3px' />"+
-  									"</svg>"
-
-  									*/
-  				var healthBar = self.drawHealthBar(p.id, p.x, p.y, 50);
+  				//var nameTag = self.drawNameTag(p.id, p.name, p.x, p.y);
+  				var healthBar = self.drawHealthBar(p.id, p.x, p.y, p.health);
   				var ship = self.drawShip(p.id, p.angle, p.x, p.y, color);
 
 				$("#game").append(ship);		
   				$("#game").append(healthBar);
+  				//$("#game").append(nameTag);
+
+  				var nameTag = self.drawNameTag(p.id, p.name, p.x, p.y);
+  				$("#game").append(nameTag);
   			}
   		}
 
@@ -142,15 +167,15 @@ var Game = function(playerName) {
   			if(b.dead){
 				delete self.bullets[b.id];
   				$('#bulletcontainer'+b.id).remove();
-  			}
-
-  			var domEl = $('#bullet'+b.id);
-  			if (document.getElementById('bullet'+b.id)) {
-  				domEl.attr("cx", b.x);
-  				domEl.attr("cy", b.y);
   			}else{
-	  			var bullet = "<svg id='bulletcontainer"+b.id+"'><circle id='bullet"+b.id+"' cx='"+b.x+"' cy='"+b.y+"' r='3' stroke='lime' stroke-width='2' /></svg>"
-	  			$("#game").append(bullet);
+	  			var domEl = $('#bullet'+b.id);
+	  			if (document.getElementById('bullet'+b.id)) {
+	  				domEl.attr("cx", b.x);
+	  				domEl.attr("cy", b.y);
+	  			}else{
+		  			var bullet = "<svg id='bulletcontainer"+b.id+"'><circle id='bullet"+b.id+"' cx='"+b.x+"' cy='"+b.y+"' r='3' stroke='lime' stroke-width='2' /></svg>"
+		  			$("#game").append(bullet);
+	  			}
   			}
   		};
 			

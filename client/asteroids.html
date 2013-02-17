@@ -5,22 +5,33 @@
 </head>
 <body>
 
-
+<div id="loseModal" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="loseModalLabel" aria-hidden="true" style='display:none'>
+  <div class="modal-header">
+    
+    <h3 id="loseModalLabel">Your Ship has SEGFAULTED in SPACE!!</h3>
+  </div>
+  <div class="modal-body">
+    <h2>STOP: 0x00000019 (0x00000000, 0xC00E0FF0, 0xFFFFEFD4, 0xC0000000) BAD_POOL_HEADER</h2>
+    <h5>PRESS CRTL-F5 to reboot your ship!<h5>
+  </div>
+  <div class="modal-footer">
+  </div>
+</div>
  
 <!-- Modal -->
 <div id="myModal" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
   <div class="modal-header">
     
-    <h3 id="myModalLabel">Modal header</h3>
+    <h3 id="myModalLabel">HyperAsteroids System Message</h3>
   </div>
   <div class="modal-body">
     <h2>Welcome to Hyper Asteroids!</h2>
     <h5>Choose a nickname and head into space!!!<h5>
     <label for="nickname">Nickname</label>
-    <input id="nickname" type="text">
+    <input tabIndex=0 id="nickname" type="text">
   </div>
   <div class="modal-footer">
-    <button data-dismiss="modal">Get Started!</button>
+    <button type='submit' data-dismiss="modal">Get Started!</button>
   </div>
 </div>
 
@@ -36,6 +47,10 @@
 <script>
 	// Start the game
 	$(function(){
+		$('#nickname').focus();
+		$('#loseModal').modal({
+			show: false
+		});
 		$('#myModal').modal('show');
 
 		$('#myModal').on('hidden', function startGame(){
@@ -66,12 +81,12 @@
 				}
 				//leftarrow
 				if(keys.indexOf(37)>-1){
-					angle = -0.1;
+					angle = -0.05;
 				}
 
 				//rightarrow
 				if(keys.indexOf(39)>-1){
-					angle = 0.1;
+					angle = 0.05;
 				}
 
 				//spacebar

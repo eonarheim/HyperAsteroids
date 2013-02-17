@@ -21,6 +21,10 @@ var newId = function(){
 	return id++;
 }
 
+var distance = function(pos1, pos2){
+	return Math.sqrt(Math.pow(pos1.x-pos2.x,2) + Math.pow(pos1.y-pos2.y,2));
+}
+
 /// Broadcast to all except me
 var broadcast = function(type, me, data){
 	for(var i = 0; i < players.length; i++) {
@@ -95,10 +99,15 @@ var Bullet = function(dir, pos, ownerId){
 	self.id = newId();
 	self.pos = pos;
 	self.dir = dir;
+	self.dead = false;
 	self.vel = .4;
 	self.life = 100;
+	self.ownerId = ownerId;
 	self.update = function(timeElapsed) {
 		self.life--;
+		if(self.life <= 0){
+			self.dead = true;
+		}
 		self.pos.add(self.dir, self.vel*timeElapsed);
 
 		self.pos.x %= maxX;
@@ -117,12 +126,12 @@ var Bullet = function(dir, pos, ownerId){
 }
 
 var Player = function(id, socket){
-	var self = {};
+	var self = this;
 	self.id = id;
-	self.name = "";
+	self.name = "Unknown";
 	self.health = 100;
 	self.socket = socket;
-	self.pos = new Pos(100,100);
+	self.pos = randomPos(maxX,maxY);//new Pos(100,100);
 	self.dir = new Dir(1.0,0.0);
 	self.dy = 0;
 	self.dx = 0;
@@ -137,6 +146,7 @@ var Player = function(id, socket){
 	self.sinceLastMove;
 	self.fireBullet = function(){
 		if(self.canFire){
+			console.log("Firing bullet with ownder id " + self.id);
 			var newBullet = new Bullet(new Dir(self.dir.dx, self.dir.dy), new Pos(self.pos.x, self.pos.y), self.id);
 			//console.log("Creating new bullet: " + newBullet.id);
 			bullets.push(newBullet);
@@ -158,7 +168,8 @@ var Player = function(id, socket){
 			self.sinceLastMove = self.lastMove;
 			self.canMove = false;
 		}else{
-			//console.log("Can't move yet");
+			console.log("Can't move yet");
+
 		}
 
 	}
@@ -168,8 +179,8 @@ var Player = function(id, socket){
 		self.dx = clamp(self.dx,-.5,.5);
 		self.dy = clamp(self.dy,-.5,.5);
 		//console.log("New Vel: " + (self.dx*timeElapsed).toFixed(1) + ", " + (self.dy*timeElapsed).toFixed(1));
-		self.pos.x += clamp(self.dx*timeElapsed, -15, 15);
-		self.pos.y += clamp(self.dy*timeElapsed, -15, 15);
+		self.pos.x += clamp(self.dx*timeElapsed, -10, 10);
+		self.pos.y += clamp(self.dy*timeElapsed, -10, 10);
 
 
 		self.pos.x %= maxX;
@@ -195,6 +206,22 @@ var Player = function(id, socket){
 		// Move only every 70ms
 		if(self.sinceLastMove - self.lastMove > 100){
 			self.canMove = true;
+		}
+
+		// Check for bullet collisions
+		for(var id in bullets){
+			var b = bullets[id];
+			if(b.ownerId == self.id || b.dead){
+				continue;
+			}
+
+			if(distance(b.pos, self.pos) < 12){
+				self.health -= 10;
+				//console.log(JSON.stringify(b)+":"+JSON.stringify(self.pos));
+				//console.log("Player " + self.name + " is hit by " + players[b.ownerId].name + " by " + distance(b.pos, self.pos));
+				b.dead = true;
+				break;
+			}
 		}
 		
 		
@@ -258,13 +285,14 @@ io.sockets.on('connection', function (socket) {
   		
   		for(var id in players){
   			var player =  players[id];
-  			if(player.socket === socket){
+  			if(player.socket == socket){
   				delete players[id];
   				break;
   			}
-
+  			
   		}
-      console.log("[INFO]: Client disconnected! Players left: " + players.length);
+      console.log("[INFO]: Client disconnected! Players : " + player.name + " ("+player.id+")");
+
 
   });
 
@@ -275,7 +303,7 @@ io.sockets.on('connection', function (socket) {
 	setInterval(function(){
 		// Get the time to calculate time-elapsed
 		var now = new Date().getTime();
-		var elapsed = now - lastTime;
+		var elapsed = Math.floor((now - lastTime));
 		//console.log("Elapsed time: " + elapsed);
 
 		// Update Players
@@ -295,10 +323,12 @@ io.sockets.on('connection', function (socket) {
 
 			for(var j in players){
 				var tmp = players[j];
+				if(tmp.health< 0){continue;}
 				p.socket.emit(Client.player, 
 				{
 					id: tmp.id,
 					name: tmp.name,
+					health: tmp.health,
 					x: tmp.pos.x,
 					y: tmp.pos.y,
 					angle: tmp.dir.angle
@@ -319,13 +349,28 @@ io.sockets.on('connection', function (socket) {
 						y: b.pos.y
 					});
 				}else{
+
 					p.socket.emit(Client.bullet, 
 					{
 						id: b.id,
 						dead: true
 					});
 				}
+			}
+		}
 
+		// Remove dead bullets
+		for (var id in bullets){
+			var b = bullets[id];
+			if(b.dead){
+				delete bullets[id];
+			}
+		}
+		// Remove dead players
+		for( var id in players){
+			var p = players[id];
+			if(p.health < 0){
+				delete players[id];
 			}
 		}
 
