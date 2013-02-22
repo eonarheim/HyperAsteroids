@@ -27,6 +27,7 @@ var Game = function(playerName) {
  	self.y = 0;
  	self.angle = 0.0;
  	self.dead = false;
+  
   self.canvas = document.getElementById("game2");
   document.body.style.margin = "0";
   self.canvas.width = "1000";

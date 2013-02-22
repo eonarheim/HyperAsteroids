@@ -101,8 +101,8 @@ var Bullet = function(dir, pos, ownerId){
 	self.pos = pos;
 	self.dir = dir;
 	self.dead = false;
-	self.vel = .4;
-	self.life = 100;
+	self.vel = .5;
+	self.life = 40;
 	self.ownerId = ownerId;
 	self.update = function(timeElapsed) {
 		self.life--;
@@ -149,6 +149,7 @@ var Player = function(id, socket){
 			//console.log("Firing bullet with ownder id " + self.id);
 			var newBullet = new Bullet(new Dir(self.dir.dx, self.dir.dy), new Pos(self.pos.x, self.pos.y), self.id);
 			//console.log("Creating new bullet: " + newBullet.id);
+			//newBullet.vel += newBullet.vel + Math.sqrt(self.dx*self.dx + self.dy+self.dy);
 			bullets.push(newBullet);
 			self.lastFire = new Date().getTime();
 			self.sinceLastFire = self.lastFire;
@@ -162,8 +163,8 @@ var Player = function(id, socket){
 
 		if(self.canMove){
 			// Appy impulse
-			self.dx += self.dir.dx/40;
-			self.dy += self.dir.dy/40;
+			self.dx += self.dir.dx/20;
+			self.dy += self.dir.dy/20;
 			self.lastMove = new Date().getTime();
 			self.sinceLastMove = self.lastMove;
 			self.canMove = false;
@@ -175,11 +176,9 @@ var Player = function(id, socket){
 	}
 
 	self.update = function(timeElapsed) {
-		if(timeElapsed < 15){
-			return;
-		}
-		self.dx = clamp(self.dx,-.5,.5);
-		self.dy = clamp(self.dy,-.5,.5);
+		
+		//self.dx = clamp(self.dx,-.5,.5);
+		//self.dy = clamp(self.dy,-.5,.5);
 		//console.log("New Vel: " + (self.dx*timeElapsed).toFixed(1) + ", " + (self.dy*timeElapsed).toFixed(1));
 		self.pos.x += clamp(self.dx*timeElapsed, -10, 10);
 		self.pos.y += clamp(self.dy*timeElapsed, -10, 10);
