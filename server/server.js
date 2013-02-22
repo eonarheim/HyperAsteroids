@@ -109,7 +109,7 @@ var Bullet = function(dir, pos, ownerId){
 		if(self.life <= 0){
 			self.dead = true;
 		}
-		self.pos.add(self.dir, self.vel*timeElapsed/playersArray.length);
+		self.pos.add(self.dir, self.vel*timeElapsed);
 
 		self.pos.x %= maxX;
 		self.pos.y %= maxY;
@@ -181,8 +181,8 @@ var Player = function(id, socket){
 		self.dx = clamp(self.dx,-.5,.5);
 		self.dy = clamp(self.dy,-.5,.5);
 		//console.log("New Vel: " + (self.dx*timeElapsed).toFixed(1) + ", " + (self.dy*timeElapsed).toFixed(1));
-		self.pos.x += clamp(self.dx*timeElapsed/playersArray.length, -10, 10);
-		self.pos.y += clamp(self.dy*timeElapsed/playersArray.length, -10, 10);
+		self.pos.x += clamp(self.dx*timeElapsed, -10, 10);
+		self.pos.y += clamp(self.dy*timeElapsed, -10, 10);
 
 
 		self.pos.x %= maxX;
@@ -239,6 +239,8 @@ var Player = function(id, socket){
 // asteroids server 
 var io = require('socket.io').listen(8080, {log: false});
 
+
+var started = false;
 io.sockets.on('connection', function (socket) {
   var newplayerId = newId();
   var newplayer = new Player(newplayerId, socket);
@@ -305,78 +307,81 @@ io.sockets.on('connection', function (socket) {
   
   // Mainloop code executes every 30 ms and emits postion information to players
 
-	var lastTime = new Date().getTime();
-	setInterval(function(){
-		// Get the time to calculate time-elapsed
-		var now = new Date().getTime();
-		var elapsed = Math.floor((now - lastTime));
-		//console.log("Elapsed time: " + elapsed);
+  if(!started){
+  		started = true;
+		var lastTime = new Date().getTime();
+		setInterval(function(){
+			// Get the time to calculate time-elapsed
+			var now = new Date().getTime();
+			var elapsed = Math.floor((now - lastTime));
+			//console.log("Elapsed time: " + elapsed);
 
-		// Update Players
-		for(var id in players){
-			players[id].update(elapsed);
-		}
+			// Update Players
+			for(var id in players){
+				players[id].update(elapsed);
+			}
 
-		// Update Bulllets
-		for(var id in bullets){
-			var b = bullets[id];
-			b.update(elapsed);
-		}
-		playersArray = playersArray.filter(function(player){
-			return player.health > -1;
-		});
-		var dlPackage = playersArray.map(function(player){
+			// Update Bulllets
+			for(var id in bullets){
+				var b = bullets[id];
+				b.update(elapsed);
+			}
+			playersArray = playersArray.filter(function(player){
+				return player.health > -1;
+			});
+			var dlPackage = playersArray.map(function(player){
+					return {
+						id: player.id,
+						name: player.name,
+						health: player.health,
+						x: player.pos.x,
+						y: player.pos.y,
+						angle: player.dir.angle
+					};
+				});
+			
+			var dlBullets = bullets.map(function(bullet){
 				return {
-					id: player.id,
-					name: player.name,
-					health: player.health,
-					x: player.pos.x,
-					y: player.pos.y,
-					angle: player.dir.angle
+					id: bullet.id,
+					dead: bullet.dead,
+					x: bullet.pos.x,
+					y: bullet.pos.y
 				};
 			});
-		
-		var dlBullets = bullets.map(function(bullet){
-			return {
-				id: bullet.id,
-				dead: bullet.dead,
-				x: bullet.pos.x,
-				y: bullet.pos.y
-			};
-		});
-		// Broadcast all player positions
-		for(var id in players){
-			var p = players[id];
-			p.socket.emit(Client.player, dlPackage);
-		}
-
-		// Broadcast all bullet positions
-		for(var id in players){
-			var p = players[id];
-			p.socket.emit(Client.bullet, dlBullets);
-		}
-
-		// Remove dead bullets
-		for (var id in bullets){
-			var b = bullets[id];
-			if(b.dead){
-				bullets.splice(id,1);
+			// Broadcast all player positions
+			for(var id in players){
+				var p = players[id];
+				p.socket.emit(Client.player, dlPackage);
 			}
-		}
-		// Remove dead players
-		for( var id in playersArray){
-			var p = playersArray[id];
-			if(p.health < 0){
-				playersArray.splice(id, 1);
-				delete players[id];
+
+			// Broadcast all bullet positions
+			for(var id in players){
+				var p = players[id];
+				p.socket.emit(Client.bullet, dlBullets);
 			}
-		}
 
-		// update time of last loop ending
-		lastTime = now;
+			// Remove dead bullets
+			for (var id in bullets){
+				var b = bullets[id];
+				if(b.dead){
+					bullets.splice(id,1);
+				}
+			}
+			// Remove dead players
+			for( var id in playersArray){
+				var p = playersArray[id];
+				if(p.health < 0){
+					playersArray.splice(id, 1);
+					delete players[id];
+				}
+			}
 
-	}, 35);
+			// update time of last loop ending
+			lastTime = now;
 
+		}, 35);
+
+	}
 
 });
 

@@ -53,19 +53,19 @@ var Game = function(playerName) {
 		socket.emit(Server.info, {id: self.id, name: self.name})
 	});
 
-  	socket.on(Client.player, function (data) {
-  		$.each(data, function(i, player){
-  			if(player.id == self.id){
-  				if(player.health <= 0){
-	  				$('#loseModal').show();
-	  				self.dead = true;
-	  				socket.disconnect();
-  				}
-  			}
-  			self.players[player.id] = player;
+	socket.on(Client.player, function (data) {
+		$.each(data, function(i, player){
+			if(player.id == self.id){
+				if(player.health <= 0){
+  				$('#loseModal').show();
+  				self.dead = true;
+  				socket.disconnect();
+				}
+			}
+			self.players[player.id] = player;
 
-  		});
-  		self.playersArray = data;
+		});
+		self.playersArray = data;
 	});
 
 	socket.on(Client.bullet, function (data){
@@ -75,104 +75,102 @@ var Game = function(playerName) {
 	});
 
 
-  	self.move = function(move, angle){
-  		if(self.dead) return;
-  		socket.emit(Server.move, 
-  			{
-  				id: self.id,
-  				forward: move,
-  				rotation: angle 
-  			});
-  	}
-
-  	self.fire = function(angle) {
-  		if(self.dead) return;
-  		socket.emit(Server.fire, 
-  			{
+	self.move = function(move, angle){
+		if(self.dead) return;
+		socket.emit(Server.move, 
+			{
 				id: self.id,
-  				rotation: angle 
-  			});
-  	}
+				forward: move,
+				rotation: angle 
+			});
+	}
 
-    self.drawShip = function(id, angle, x, y, color){
-      self.ctx.save();
-      self.ctx.translate(x,y);
-      self.ctx.save();
-      self.ctx.rotate(angle);
+	self.fire = function(angle) {
+		if(self.dead) return;
+		socket.emit(Server.fire, 
+			{
+			id: self.id,
+				rotation: angle 
+			});
+	}
 
-      self.ctx.beginPath();
-      self.ctx.lineTo(0,10);
-      self.ctx.lineTo(40,0);
-      self.ctx.lineTo(0,-10);
-      self.ctx.lineTo(0,10);
-      self.ctx.strokeStyle = color;
-      self.ctx.stroke();
+  self.drawShip = function(id, angle, x, y, color){
+    self.ctx.save();
+    self.ctx.translate(x,y);
+    self.ctx.save();
+    self.ctx.rotate(angle);
 
-      
-      self.ctx.restore();
-      self.ctx.restore();
+    self.ctx.beginPath();
+    self.ctx.lineTo(0,10);
+    self.ctx.lineTo(40,0);
+    self.ctx.lineTo(0,-10);
+    self.ctx.lineTo(0,10);
+    self.ctx.strokeStyle = color;
+    self.ctx.stroke();
 
+    
+    self.ctx.restore();
+    self.ctx.restore();
+
+  }
+
+  self.drawHealthBar = function(id, x, y, health){
+    var color = "";
+    if(health > 80){
+      color = "lime";
+    }else if(health > 60){
+      color = "yellow";
+    }else if(health > 40){
+      color = "orange"; 
+    }else {
+      color = "red";
     }
 
-    self.drawHealthBar = function(id, x, y, health){
+
+    self.ctx.fillStyle = color;
+    self.ctx.fillRect(x-10,y-20,health,2);
+  }
+
+  self.drawNameTag = function(id, name, x, y){
+    self.ctx.fillStyle = 'lime';
+    self.ctx.fillText(name, x-10, y-25);
+  }
+
+  self.drawBullet = function (x, y){
+    self.ctx.beginPath();
+    self.ctx.strokeStyle = 'lime';
+    self.ctx.arc(x-1,y-1,2,0,2*Math.PI);
+    self.ctx.stroke();
+  }
+
+	self.draw = function(){
+    self.ctx.fillStyle='black';
+    self.ctx.fillRect(0,0,1000,800);
+		// Draw updates 
+		for(var id in self.playersArray){
+			var p = self.playersArray[id];
+
       var color = "";
-      if(health > 80){
+      if(id == self.id){
         color = "lime";
-      }else if(health > 60){
-        color = "yellow";
-      }else if(health > 40){
-        color = "orange"; 
-      }else {
-        color = "red";
+        p.name = self.name;
+      }else{
+        color = "rgb("+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+")";
       }
 
+			if(p.health > 0){
+        self.drawShip(p.id, p.angle, p.x, p.y, "lime");
+        self.drawHealthBar(p.id, p.x, p.y, p.health);
+        self.drawNameTag(p.id, p.name, p.x, p.y);
+			}
+		}
 
-      self.ctx.fillStyle = color;
-      self.ctx.fillRect(x-10,y-20,health,2);
-    }
+		$.each(self.bullets, function(i, b){
+			if(!b.dead){
+			   self.drawBullet(b.x,b.y);
+      }
+		});
+	};
 
-    self.drawNameTag = function(id, name, x, y){
-      self.ctx.fillStyle = 'lime';
-      self.ctx.fillText(name, x-10, y-25);
-    }
-
-    self.drawBullet = function (x, y){
-      self.ctx.beginPath();
-      self.ctx.strokeStyle = 'lime';
-      self.ctx.arc(x-1,y-1,2,0,2*Math.PI);
-      self.ctx.stroke();
-    }
-
-  	self.draw = function(){
-      self.ctx.fillStyle='black';
-      self.ctx.fillRect(0,0,1000,800);
-  		// Draw updates 
-  		for(var id in self.playersArray){
-  			var p = self.playersArray[id];
-
-        var color = "";
-        if(id == self.id){
-          color = "lime";
-          p.name = self.name;
-        }else{
-          color = "rgb("+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+")";
-        }
-
-  			if(p.health > 0){
-          self.drawShip(p.id, p.angle, p.x, p.y, "lime");
-          self.drawHealthBar(p.id, p.x, p.y, p.health);
-          self.drawNameTag(p.id, p.name, p.x, p.y);
-  			}
-  		}
-
-  		$.each(self.bullets, function(i, b){
-  			if(!b.dead){
-  			   self.drawBullet(b.x,b.y);
-        }
-  		});
-  	};
-
-
-
-  	return self;
+  return self;
 };
