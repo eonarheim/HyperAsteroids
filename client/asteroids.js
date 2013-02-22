@@ -27,7 +27,7 @@ var Game = function(playerName) {
  	self.y = 0;
  	self.angle = 0.0;
  	self.dead = false;
-  
+
   self.canvas = document.getElementById("game2");
   document.body.style.margin = "0";
   self.canvas.width = "1000";
@@ -43,6 +43,13 @@ var Game = function(playerName) {
 	socket.on('connect',function(){
 		$('#game').empty();
 	});
+
+  socket.on('error', function(){
+    self.dead = true;
+    
+    $('#serverdown').show();
+
+  });
 
 
 	socket.on(Client.start, function(data){
