@@ -288,14 +288,17 @@ io.sockets.on('connection', function (socket) {
   		
   		for(var id in players){
   			var player =  players[id];
+  			// remove players when they disconnect
   			if(player.socket == socket){
+      		console.log("[INFO]: Client disconnected! Players : " + player.name + " ("+player.id+")");
+      		player.health = -100;
+  				playersArray.splice(id,1);
+  				console.log("[INFO]: Players left: " + playersArray.length);
   				delete players[id];
   				break;
   			}
   			
   		}
-      console.log("[INFO]: Client disconnected! Players : " + player.name + " ("+player.id+")");
-
 
   });
 

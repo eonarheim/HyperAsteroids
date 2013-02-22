@@ -17,8 +17,8 @@ Client.dead = "dead"; //data: {id: somenumber}
 
 var Game = function(playerName) {
 
-  	var self = this;
-  	self.name = playerName;
+	var self = this;
+	self.name = playerName;
  	self.players = {};
  	self.playersArray = [];
  	self.bullets = {};
@@ -27,12 +27,21 @@ var Game = function(playerName) {
  	self.y = 0;
  	self.angle = 0.0;
  	self.dead = false;
-  	var socket = io.connect('http://192.168.1.197:8080', {
+  self.canvas = document.getElementById("game2");
+  document.body.style.margin = "0";
+  self.canvas.width = "1000";
+  self.canvas.height = "800";
+
+  self.ctx = self.canvas.getContext("2d");
+  self.ctx.font = "20px Consolas";
+
+	var socket = io.connect('http://192.168.1.197:8080', {
     	reconnect: false
 	});
-  	socket.on('connect',function(){
-  		$('#game').empty();
-  	});
+
+	socket.on('connect',function(){
+		$('#game').empty();
+	});
 
 
 	socket.on(Client.start, function(data){
@@ -56,7 +65,7 @@ var Game = function(playerName) {
   			self.players[player.id] = player;
 
   		});
-  		playersArray = data;
+  		self.playersArray = data;
 	});
 
 	socket.on(Client.bullet, function (data){
@@ -84,96 +93,82 @@ var Game = function(playerName) {
   				rotation: angle 
   			});
   	}
-  	self.drawHUD = function(){
 
-  	}
+    self.drawShip = function(id, angle, x, y, color){
+      self.ctx.save();
+      self.ctx.translate(x,y);
+      self.ctx.save();
+      self.ctx.rotate(angle);
 
-  	self.drawShip = function(id, angle, x, y, color){
-  		var triangle = 
-  		"<svg class='container"+id+"'>"+
-			"<polygon id='player"+id+"' transform='rotate("+angle*180.0/Math.PI+" "+x+" "+y+") translate("+x+" "+y+")' points='0 10 0 -10 40 0' style='stroke:"+color+";stroke-width:3px' />"+
-  		"</svg>"
-  		return triangle;
-  	}
+      self.ctx.beginPath();
+      self.ctx.lineTo(0,10);
+      self.ctx.lineTo(40,0);
+      self.ctx.lineTo(0,-10);
+      self.ctx.lineTo(0,10);
+      self.ctx.strokeStyle = color;
+      self.ctx.stroke();
 
-  	self.updateShip = function(id, angle, x, y){
-  		$('#player'+id).attr('transform', "rotate("+angle*180.0/Math.PI+" "+x+" "+y+") translate("+x+" "+y+")");
-  	}
+      
+      self.ctx.restore();
+      self.ctx.restore();
 
-  	self.updateHealthBar = function(id, x, y, health){
+    }
 
-  		$('#health'+id).attr("x", x-10);
-  		$('#health'+id).attr("y", y-20);
-  		$('#health'+id).attr("width", health);
-  	}
+    self.drawHealthBar = function(id, x, y, health){
+      var color = "";
+      if(health > 80){
+        color = "lime";
+      }else if(health > 60){
+        color = "yellow";
+      }else if(health > 40){
+        color = "orange"; 
+      }else {
+        color = "red";
+      }
 
-  	self.drawHealthBar = function(id, x, y, health){
-  		var healthBar = "<svg class='container"+id+"'><rect id='health"+id+"' width="+50+" height="+2+" x="+(x-10)+" y="+(y-20)+" style='fill:lime;stroke-width: 1;stroke:lime;'></rect></svg>";
-  		return healthBar;
-  	}
 
-  	self.drawNameTag = function(id, name, x, y){
-  		var nameTag = "<svg class='container"+id+"'><text id='nametag"+id+"' transform='translate("+(x-10)+" "+(y-25)+")' fill='lime' style='font-family:Consolas' >"+name+"</text></svg>"
-  		return nameTag;
-  	}
-  	self.updateNameTag = function(id,name, x, y){
-  		$('#nametag'+id).attr('transform', "translate("+(x-10)+" "+(y-25)+")");
-  		$('#nametag'+id).innerHtml = name;
-  	}
+      self.ctx.fillStyle = color;
+      self.ctx.fillRect(x-10,y-20,health,2);
+    }
 
-  	
+    self.drawNameTag = function(id, name, x, y){
+      self.ctx.fillStyle = 'lime';
+      self.ctx.fillText(name, x-10, y-25);
+    }
+
+    self.drawBullet = function (x, y){
+      self.ctx.beginPath();
+      self.ctx.strokeStyle = 'lime';
+      self.ctx.arc(x-1,y-1,2,0,2*Math.PI);
+      self.ctx.stroke();
+    }
 
   	self.draw = function(){
+      self.ctx.fillStyle='black';
+      self.ctx.fillRect(0,0,1000,800);
   		// Draw updates 
-  		for(var id in self.players){
-  			var p = self.players[id];
-  			var domEl = $('#player'+id);
-  			if(p.health <= 0){
-  				$('.container'+id).remove();
-  				delete self.players[id];
-  				continue;
-  			}
-  			
-  			if(id == self.id){
-  				color = "lime";
-  				p.name = self.name;
-  			}else{
-  				color = "rgb("+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+")";
-  			}
+  		for(var id in self.playersArray){
+  			var p = self.playersArray[id];
 
-  			if (document.getElementById('player'+p.id)) {
-  				domEl.attr('transform', "rotate("+p.angle*180.0/Math.PI+" "+p.x+" "+p.y+") translate("+p.x+" "+p.y+")");
-  				self.updateShip(p.id, p.angle, p.x, p.y);
-  				self.updateHealthBar(p.id, p.x, p.y, p.health);
+        var color = "";
+        if(id == self.id){
+          color = "lime";
+          p.name = self.name;
+        }else{
+          color = "rgb("+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+","+(Math.random()*155 +100).toFixed(0)+")";
+        }
 
-  				self.updateNameTag(p.id, p.name, p.x, p.y);
-  			}else{
-  				//var nameTag = self.drawNameTag(p.id, p.name, p.x, p.y);
-  				var healthBar = self.drawHealthBar(p.id, p.x, p.y, p.health);
-  				var ship = self.drawShip(p.id, p.angle, p.x, p.y, color);
-
-				$("#game").append(ship);		
-  				$("#game").append(healthBar);
-  				//$("#game").append(nameTag);
-
-  				var nameTag = self.drawNameTag(p.id, p.name, p.x, p.y);
-  				$("#game").append(nameTag);
+  			if(p.health > 0){
+          self.drawShip(p.id, p.angle, p.x, p.y, "lime");
+          self.drawHealthBar(p.id, p.x, p.y, p.health);
+          self.drawNameTag(p.id, p.name, p.x, p.y);
   			}
   		}
 
   		$.each(self.bullets, function(i, b){
-  			if(b.dead){
-  				$('#bulletcontainer'+b.id).remove();
-  			}else{
-	  			var domEl = $('#bullet'+b.id);
-	  			if (document.getElementById('bullet'+b.id)) {
-	  				domEl.attr("cx", b.x);
-	  				domEl.attr("cy", b.y);
-	  			}else{
-		  			var bullet = "<svg id='bulletcontainer"+b.id+"'><circle id='bullet"+b.id+"' cx='"+b.x+"' cy='"+b.y+"' r='3' stroke='lime' stroke-width='2' /></svg>"
-		  			$("#game").append(bullet);
-	  			}
-  			}
+  			if(!b.dead){
+  			   self.drawBullet(b.x,b.y);
+        }
   		});
   	};
 
