@@ -28,7 +28,7 @@ var Game = function(playerName) {
  	self.angle = 0.0;
  	self.dead = false;
 
-  self.canvas = document.getElementById("game2");
+  self.canvas = document.getElementById("game");
   document.body.style.margin = "0";
   self.canvas.width = "1000";
   self.canvas.height = "800";
@@ -36,7 +36,7 @@ var Game = function(playerName) {
   self.ctx = self.canvas.getContext("2d");
   self.ctx.font = "20px Consolas";
 
-	var socket = io.connect('http://192.168.1.197:8080', {
+	var socket = io.connect('http://127.0.0.1:9999', {
     	reconnect: false
 	});
 

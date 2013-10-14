@@ -5,9 +5,12 @@
 var maxX = 1000;
 var maxY = 800;
 
+var maxPlayers = 100;
+
 // all players connected at one time!!!
 var players = {};
 var playersArray = [];
+
 
 // all bullets present at one time
 var bullets = [];
@@ -236,7 +239,7 @@ var Player = function(id, socket){
 
 
 // asteroids server 
-var io = require('socket.io').listen(8080, {log: false});
+var io = require('socket.io').listen(9999, {log: false});
 
 
 var started = false;

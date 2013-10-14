@@ -1,133 +1,152 @@
-<DOCTYPE html>
+<!DOCTYPE html>
 <html style="background-color:black !important">
 <head>
-	
+	<link href="../css/main.css" rel='stylesheet'>
 </head>
 <body>
 
+	<h1 class="title">HyperAsteroids</h2>
+	
+	<canvas id="game">
+		Sorry man, you need a better browser to run this...
+	</canvas>
+	<div id="gameArea">
+		<h2 class="heading">Instructions</h1>
+		<p class="instructions">Press up, left, or right to maneuver the spacecraft</p>
+		<p class="instructions">Press space bar to fire</p>
+		<h2 class="heading">About</h1>
+		<p class="instructions">
+			Author - Erik Onarheim <a href="https://twitter.com/ErikOnarheim">@ErikOnarheim</a>
+		<p>	
+		<p class="instructions">
+			This game was constructed using HTML5 Canvas and Socket.io to achieve a multiplayer game experience on the web.
+		</p>
 
-<canvas id="game2">
-</canvas>
-
-<!-- leader board -->
-<div class="container">
-	<h2>Leader Board</h2>
-	<div class="modal-body">
-    
-  </div>
-</div>
-
-<div id="serverdown" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="serverdownLabel" aria-hidden="true" style='border-color:red;color:red;display:none'>
-  <div class="modal-header" style="border-bottom: 2px solid red;">
-    
-    <h3 id="serverdownLabel">OOPS!! Backend Server Not Available</h3>
-  </div>
-  <div class="modal-body">
-    <h2>Mechanic: Sombody set up us the bomb. Operator: Main screen turn on. CATS: ALL YOUR BASE ARE BELONG TO US.</h2>
-    <h5>Find Erik and throw a rock at him to reboot the server!<h5>
-  </div>
-  <div class="modal-footer" style="border-top: 2px solid red;">
-  </div>
-</div>
-
-<div id="loseModal" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="loseModalLabel" aria-hidden="true" style='display:none'>
-  <div class="modal-header">
-    
-    <h3 id="loseModalLabel">Your Ship has SEGFAULTED in SPACE!!</h3>
-  </div>
-  <div class="modal-body">
-    <h2>STOP: 0x00000019 (0x00000000, 0xC00E0FF0, 0xFFFFEFD4, 0xC0000000) BAD_POOL_HEADER</h2>
-    <h5>PRESS CRTL-F5 to reboot your ship!<h5>
-  </div>
-  <div class="modal-footer">
-  </div>
-</div>
- 
-<!-- Modal -->
-<div id="myModal" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-  <div class="modal-header">
-    
-    <h3 id="myModalLabel">HyperAsteroids System Message</h3>
-  </div>
-  <div class="modal-body">
-    <h2>Welcome to Hyper Asteroids!</h2>
-    <h5>Choose a nickname and head into space!!!<h5>
-    <label for="nickname">Nickname</label>
-    <input tabIndex=0 id="nickname" type="text">
-  </div>
-  <div class="modal-footer">
-    <button type='submit' data-dismiss="modal">Get Started!</button>
-  </div>
-</div>
+		<p class="instructions">
+			Check out the source on <a href="https://github.com/eonarheim/HyperAsteroids">github</a>
+		</p>
+	</div>
 
 
-<link href="../css/main.css" rel='stylesheet'>
-<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
-<script src="../lib/bootstrap.js"></script>
-<script src="../lib/socket.io.js"></script>
-<script src="asteroids.js"></script>	
-<script>
-	// Start the game
-	$(function(){
-		$('#nickname').focus();
-		$('#loseModal').modal({
-			show: false
-		});
-		$('#myModal').modal('show');
 
-		$('#myModal').on('hidden', function startGame(){
-			var name = $("#nickname")[0].value;
-			var game = new Game(name);
+	<div id="serverdown" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="serverdownLabel" aria-hidden="true" style='border-color:red;color:red;display:none'>
+	  <div class="modal-header" style="border-bottom: 2px solid red;">
+	    
+	    <h3 id="serverdownLabel">OOPS!! Backend Server Not Available</h3>
+	  </div>
+	  <div class="modal-body">
+	    <h2>Mechanic: Sombody set up us the bomb. Operator: Main screen turn on. CATS: ALL YOUR BASE ARE BELONG TO US.</h2>
+	    <h5>Find Erik and throw a rock at him to reboot the server!<h5>
+	  </div>
+	  <div class="modal-footer" style="border-top: 2px solid red;">
+	  </div>
+	</div>
 
-			var keys = [];
-			// Capture key events
-			window.onkeydown = function(ev){
-				if(keys.indexOf(ev.keyCode)<0){
-					keys.push(ev.keyCode);
-				}
-			};
-			window.onkeyup = function(ev){
-				var key = keys.indexOf(ev.keyCode);
-				keys.splice(key,1);
-			};
+	<div id="loseModal" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="loseModalLabel" aria-hidden="true" style='display:none'>
+	  <div class="modal-header">
+	    
+	    <h3 id="loseModalLabel">Your Ship has SEGFAULTED in SPACE!!</h3>
+	  </div>
+	  <div class="modal-body">
+	    <h2>STOP: 0x00000019 (0x00000000, 0xC00E0FF0, 0xFFFFEFD4, 0xC0000000) BAD_POOL_HEADER</h2>
+	    <h5>PRESS CRTL-F5 to reboot your ship!<h5>
+	  </div>
+	  <div class="modal-footer">
+	  </div>
+	</div> 
+	<!-- Modal -->
+	<div id="myModal" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+	  <div class="modal-header">
+	    
+	    <h3 id="myModalLabel">HyperAsteroids System Message</h3>
+	  </div>
+	  <div class="modal-body">
+	    <h2>Welcome to HyperAsteroids!</h2>
+	    <h5>Choose a nickname and head into space!!!<h5>
+	    <label for="nickname">Nickname</label>
+	    <input tabIndex=0 id="nickname" type="text">
+	  </div>
+	  <div class="modal-footer">
+	    <button type='submit' data-dismiss="modal">Get Started!</button>
+	  </div>
+	</div>
 
-			// Mainloop
-			window.setInterval(function(){
 
-				var forward = false;
-				var angle  = 0.0;
-				var fire = false;
-				//uparrow
-				if(keys.indexOf(38)>-1){
-					forward = true;
-				}
-				//leftarrow
-				if(keys.indexOf(37)>-1){
-					angle = -0.09;
-				}
 
-				//rightarrow
-				if(keys.indexOf(39)>-1){
-					angle = 0.09;
-				}
+	<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+	<script src="../lib/bootstrap.js"></script>
+	<script src="../lib/socket.io.js"></script>
+	<script src="asteroids.js"></script>	
+	<script>
+		// Start the game
+		$(function(){
+			$("#gameArea").css("display","none");
+			$("#game").css("display","none");
 
-				//spacebar
-				if(keys.indexOf(32)>-1){
-					fire = true;
-				}
-				if(angle !== 0.0 || forward){
-					game.move(forward, angle);
-				}
-				if(fire){
-					game.fire(angle);
-				}
+			$('#nickname').focus();
+			$('#loseModal').modal({
+				show: false
+			});
+			$('#myModal').modal('show');
 
-				game.draw();
+			
 
-			}, 30);
-		});
+			$('#myModal').on('hidden', function startGame(){
+				var name = $("#nickname")[0].value;
+				var game = new Game(name);
 
-	})
-</script>
+				var keys = [];
+				// Capture key events
+				window.onkeydown = function(ev){
+					if(keys.indexOf(ev.keyCode)<0){
+						keys.push(ev.keyCode);
+					}
+				};
+				window.onkeyup = function(ev){
+					var key = keys.indexOf(ev.keyCode);
+					keys.splice(key,1);
+				};
+
+				$("#gameArea").css("display","block");
+				$("#game").css("display","block");
+
+				// Mainloop
+				setInterval(function(){
+
+					var forward = false;
+					var angle  = 0.0;
+					var fire = false;
+					//uparrow
+					if(keys.indexOf(38)>-1){
+						forward = true;
+					}
+					//leftarrow
+					if(keys.indexOf(37)>-1){
+						angle = -0.09;
+					}
+
+					//rightarrow
+					if(keys.indexOf(39)>-1){
+						angle = 0.09;
+					}
+
+					//spacebar
+					if(keys.indexOf(32)>-1){
+						fire = true;
+					}
+					if(angle !== 0.0 || forward){
+						game.move(forward, angle);
+					}
+					if(fire){
+						game.fire(angle);
+					}
+
+					game.draw();
+
+				}, 30);
+			});
+
+		})
+	</script>
 </body>
 </html>
