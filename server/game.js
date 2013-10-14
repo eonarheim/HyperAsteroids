@@ -219,7 +219,7 @@ var Player = function(id, socket){
 				continue;
 			}
 
-			if(distance(b.pos, self.pos) < 12){
+			if(distance(b.pos, self.pos) < 20){
 				self.health -= 10;
 				//console.log(JSON.stringify(b)+":"+JSON.stringify(self.pos));
 				//console.log("Player " + self.name + " is hit by " + players[b.ownerId].name + " by " + distance(b.pos, self.pos));
