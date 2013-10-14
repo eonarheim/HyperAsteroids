@@ -36,7 +36,7 @@ var Game = function(playerName) {
   self.ctx = self.canvas.getContext("2d");
   self.ctx.font = "20px Consolas";
 
-	var socket = io.connect('http://127.0.0.1:9999', {
+	var socket = io.connect('http://127.0.0.1', {
     	reconnect: false
 	});
 
