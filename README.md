@@ -7,5 +7,6 @@ Instructions
 ============
 
 1. Install node
-2. Run the command `node server/server.js`
-3. Navigate to localhost:8081
+2. Run `npm install` to pull down dependencies (socket.io) 
+3. Run the command `node server/server.js`
+4. Navigate to localhost:8081
